@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Tournament": {
+      "title": "Tournament",
+      "description": "Thông tin giải đấu cầu lông",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "format": { "type": "string", "enum": ["ROUND_ROBIN", "KNOCKOUT", "GROUP_KNOCKOUT"] },
+        "numberOfTeams": { "type": "integer" },
+        "groupSize": { "type": "integer" },
+        "advancePerGroup": { "type": "integer" },
+        "pointsPerVictory": { "type": "integer" },
+        "setsToWin": { "type": "integer", "enum": [2, 3] },
+        "pointsPerSet": { "type": "integer" },
+        "status": { "type": "string", "enum": ["PLANNING", "DRAW_DONE", "ACTIVE", "FINISHED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "format", "numberOfTeams", "status", "createdAt"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "Câu lạc bộ hoặc đội tuyển tham gia giải đấu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "logo": { "type": "string" },
+        "group": { "type": "string" }
+      },
+      "required": ["id", "name", "logo"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "Thành viên của đội tuyển",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["Captain", "Member"] }
+      },
+      "required": ["id", "name"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "Thông tin trận đấu và tỷ số các set",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tournamentId": { "type": "string" },
+        "round": { "type": "integer" },
+        "stage": { "type": "string", "enum": ["GROUP", "KNOCKOUT"] },
+        "groupName": { "type": "string" },
+        "team1Id": { "type": ["string", "null"] },
+        "team2Id": { "type": ["string", "null"] },
+        "status": { "type": "string", "enum": ["PENDING", "LIVE", "COMPLETED"] },
+        "winnerId": { "type": ["string", "null"] },
+        "scheduledTime": { "type": "string" },
+        "court": { "type": "string" },
+        "nextMatchId": { "type": ["string", "null"] },
+        "nextMatchPosition": { "type": ["string", "null"], "enum": ["team1", "team2"] }
+      },
+      "required": ["id", "tournamentId", "round", "stage", "status"]
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "Nhà tài trợ giải đấu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "logo": { "type": "string" },
+        "tier": { "type": "string", "enum": ["KIM_CUONG", "VANG", "BAC", "DONG"] },
+        "website": { "type": "string" }
+      },
+      "required": ["id", "name", "logo", "tier"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Tin tức bài viết và video nổi bật",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "image": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "category": { "type": "string", "enum": ["News", "Video", "Notice"] },
+        "date": { "type": "string" },
+        "author": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "category", "date", "author"]
+    }
+  },
+  "firestore": {
+    "tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Bộ sưu tập các giải đấu"
+    },
+    "tournaments/{tournamentId}/teams/{teamId}": {
+      "schema": "Team",
+      "description": "Các đội tuyển tham gia giải đấu tương ứng"
+    },
+    "tournaments/{tournamentId}/teams/{teamId}/players/{playerId}": {
+      "schema": "Player",
+      "description": "Danh sách kỳ thủ/thành viên của từng đội tuyển"
+    },
+    "tournaments/{tournamentId}/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Lịch thi đấu và kết quả các trận đấu trong giải"
+    },
+    "sponsors/{sponsorId}": {
+      "schema": "Sponsor",
+      "description": "Các nhà tài trợ chính thức của hệ thống"
+    },
+    "posts/{postId}": {
+      "schema": "Post",
+      "description": "Các bài viết tin tức và video bóng đá/cầu lông hấp dẫn"
+    }
+  }
+}

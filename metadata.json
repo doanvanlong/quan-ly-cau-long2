@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Remix: Quản lý Giải Cầu lông",
+  "description": "Hệ thống website quản lý giải đấu cầu lông chuyên nghiệp với bốc thăm chia bảng, lịch thi đấu, bảng xếp hạng và sơ đồ loại trực tiếp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
