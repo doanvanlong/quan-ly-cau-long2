@@ -93,6 +93,167 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     isFirebaseConfigured ? 'CONNECTED' : 'DISCONNECTED'
   );
 
+  // Firestore Specific Write Helper Functions (Direct Cloud Sync)
+  const firestoreSetTournament = async (t: Tournament) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'tournaments', t.id), t);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `tournaments/${t.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteTournament = async (id: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'tournaments', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `tournaments/${id}`);
+      }
+    }
+  };
+
+  const firestoreSetTeam = async (team: Team, tournamentId: string = 'general') => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'tournaments', tournamentId, 'teams', team.id), team);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `tournaments/${tournamentId}/teams/${team.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteTeam = async (id: string, tournamentId: string = 'general') => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'tournaments', tournamentId, 'teams', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `tournaments/${tournamentId}/teams/${id}`);
+      }
+    }
+  };
+
+  const firestoreSetMatch = async (match: Match) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'tournaments', match.tournamentId, 'matches', match.id), match);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `tournaments/${match.tournamentId}/matches/${match.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteMatch = async (id: string, tournamentId: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'tournaments', tournamentId, 'matches', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `tournaments/${tournamentId}/matches/${id}`);
+      }
+    }
+  };
+
+  const firestoreSetSponsor = async (s: Sponsor) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'sponsors', s.id), s);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `sponsors/${s.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteSponsor = async (id: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'sponsors', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `sponsors/${id}`);
+      }
+    }
+  };
+
+  const firestoreSetPost = async (p: Post) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'posts', p.id), p);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `posts/${p.id}`);
+      }
+    }
+  };
+
+  const firestoreDeletePost = async (id: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'posts', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `posts/${id}`);
+      }
+    }
+  };
+
+  const firestoreSetAthlete = async (a: Athlete) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'athletes', a.id), a);
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `athletes/${a.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteAthlete = async (id: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'athletes', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `athletes/${id}`);
+      }
+    }
+  };
+
+  // Helper to initialize custom live Database with Vietnamese MVP dataset on first boot
+  const initializeFirebaseWithMockData = async () => {
+    if (!db) return;
+    try {
+      console.log("Auto-initializing Firestore with high-fidelity system defaults...");
+      // 1. Tournaments
+      for (const t of mockTournaments) {
+        await setDoc(doc(db, 'tournaments', t.id), t);
+      }
+      // 2. Sponsors
+      for (const s of mockSponsors) {
+        await setDoc(doc(db, 'sponsors', s.id), s);
+      }
+      // 3. Posts
+      for (const p of mockPosts) {
+        await setDoc(doc(db, 'posts', p.id), p);
+      }
+      // 4. Athletes
+      for (const a of defaultMockAthletes) {
+        await setDoc(doc(db, 'athletes', a.id), a);
+      }
+      // 5. Teams
+      for (const team of mockTeams) {
+        let parentTId = 'general';
+        const associated = mockTournaments.find(t => t.teamIds?.includes(team.id) || t.pairedTeams?.some(pt => pt.name === team.name));
+        if (associated) {
+          parentTId = associated.id;
+        }
+        await setDoc(doc(db, 'tournaments', parentTId, 'teams', team.id), team);
+      }
+      // 6. Matches
+      for (const m of mockMatches) {
+        await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), m);
+      }
+      console.log("Firestore successfully populated and shared across all devices.");
+    } catch (error) {
+      console.error("Error auto-populating empty Firestore collections:", error);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     const localTourneys = localStorage.getItem('badminton_tournaments');
@@ -137,11 +298,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
     // Subscribe to tournaments
     const unsubTournaments = onSnapshot(collection(db, 'tournaments'), (snapshot) => {
-      const list: Tournament[] = [];
-      snapshot.forEach(docSnap => {
-        list.push(docSnap.data() as Tournament);
-      });
-      if (list.length > 0) {
+      if (snapshot.empty) {
+        // Firestore tournaments collection is empty, let's auto-populate with our rich badminton template!
+        initializeFirebaseWithMockData();
+      } else {
+        const list: Tournament[] = [];
+        snapshot.forEach(docSnap => {
+          list.push(docSnap.data() as Tournament);
+        });
         setTournaments(list);
       }
     }, (err) => {
@@ -155,9 +319,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(docSnap => {
         list.push(docSnap.data() as Sponsor);
       });
-      if (list.length > 0) {
-        setSponsors(list);
-      }
+      setSponsors(list);
     }, (err) => console.error(err));
 
     // Subscribe to posts
@@ -166,9 +328,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(docSnap => {
         list.push(docSnap.data() as Post);
       });
-      if (list.length > 0) {
-        setPosts(list);
-      }
+      setPosts(list);
     }, (err) => console.error(err));
 
     // Subscribe to athletes
@@ -177,9 +337,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(docSnap => {
         list.push(docSnap.data() as Athlete);
       });
-      if (list.length > 0) {
-        setAthletes(list);
-      }
+      setAthletes(list);
     }, (err) => console.error(err));
 
     // Subscribe to teams collectionGroup
@@ -188,13 +346,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(docSnap => {
         list.push(docSnap.data() as Team);
       });
-      if (list.length > 0) {
-        const unique: Record<string, Team> = {};
-        list.forEach(t => {
-          unique[t.id] = t;
-        });
-        setTeams(Object.values(unique));
-      }
+      const unique: Record<string, Team> = {};
+      list.forEach(t => {
+        unique[t.id] = t;
+      });
+      setTeams(Object.values(unique));
     }, (err) => console.error(err));
 
     // Subscribe to matches collectionGroup
@@ -203,9 +359,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       snapshot.forEach(docSnap => {
         list.push(docSnap.data() as Match);
       });
-      if (list.length > 0) {
-        setMatches(list);
-      }
+      setMatches(list);
     }, (err) => console.error(err));
 
     return () => {
@@ -288,9 +442,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setActiveTournamentIdState(id);
     localStorage.setItem('badminton_active_id', id || '');
   };
-
+ 
   // Reset database back to factory
-  const resetData = () => {
+  const resetData = async () => {
     setTournaments(mockTournaments);
     setTeams(mockTeams);
     setMatches(mockMatches);
@@ -300,8 +454,12 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     localStorage.setItem('badminton_athletes', JSON.stringify(defaultMockAthletes));
     setActiveTournamentIdState('tour-demo');
     syncStorage(mockTournaments, mockTeams, mockMatches, mockSponsors, mockPosts, 'tour-demo');
-  };
 
+    if (isFirebaseConfigured && db) {
+      await initializeFirebaseWithMockData();
+    }
+  };
+ 
   // Creating tournament tournament
   const createTournament = (newT: Omit<Tournament, 'id' | 'createdAt'>): Tournament => {
     const id = 'tour-' + Date.now();
@@ -315,15 +473,18 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setTournaments(updated);
     setActiveTournamentIdState(id);
     syncStorage(updated, teams, matches, sponsors, posts, id);
+
+    firestoreSetTournament(created);
+
     return created;
   };
-
+ 
   const updateTournament = (id: string, updates: Partial<Tournament>) => {
     const tourney = tournaments.find(t => t.id === id);
     if (!tourney) return;
-
+ 
     const mergedTourney: Tournament = { ...tourney, ...updates };
-
+ 
     if (updates.status === 'DEACTIVE') {
       const updatedMatches = matches.filter(m => m.tournamentId !== id);
       const deactiveTourney: Tournament = {
@@ -334,9 +495,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       setTournaments(updatedTourneys);
       setMatches(updatedMatches);
       syncStorage(updatedTourneys, teams, updatedMatches, sponsors, posts, activeTournamentId);
+
+      firestoreSetTournament(deactiveTourney);
+      // Clean matches from Firestore
+      const matchesToDelete = matches.filter(m => m.tournamentId === id);
+      for (const m of matchesToDelete) {
+        firestoreDeleteMatch(m.id, id);
+      }
       return;
     }
-
+ 
     if (!mergedTourney.playingDays || mergedTourney.playingDays.length === 0) {
       // Clear matches of this tournament and update tournament status to PLANNING
       const updatedMatches = matches.filter(m => m.tournamentId !== id);
@@ -348,21 +516,28 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       setTournaments(updatedTourneys);
       setMatches(updatedMatches);
       syncStorage(updatedTourneys, teams, updatedMatches, sponsors, posts, activeTournamentId);
+
+      firestoreSetTournament(resetTourney);
+      // Clean matches from Firestore
+      const matchesToDelete = matches.filter(m => m.tournamentId === id);
+      for (const m of matchesToDelete) {
+        firestoreDeleteMatch(m.id, id);
+      }
       return;
     }
-
+ 
     // Find matches of this tournament
     const tourneyMatches = matches.filter(m => m.tournamentId === id);
     const hasMatches = tourneyMatches.length > 0;
     const hasStarted = tourneyMatches.some(m => m.status === 'LIVE' || m.status === 'COMPLETED');
-
+ 
     const structureRulesChanged = 
       (updates.hasSemis !== undefined && updates.hasSemis !== tourney.hasSemis) ||
       (updates.semisPairingType !== undefined && updates.semisPairingType !== tourney.semisPairingType) ||
       (updates.format !== undefined && updates.format !== tourney.format) ||
       (updates.numberOfTeams !== undefined && updates.numberOfTeams !== tourney.numberOfTeams) ||
       (updates.matchType !== undefined && updates.matchType !== tourney.matchType);
-
+ 
     const schedulingChanged = 
       updates.startDate !== undefined ||
       updates.endDate !== undefined ||
@@ -373,7 +548,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       updates.courtsCount !== undefined ||
       updates.courtNames !== undefined ||
       updates.courtNumbers !== undefined;
-
+ 
     if (hasMatches) {
       if (structureRulesChanged && !hasStarted) {
         // Since structure changed and it has not started, call runDraw to fully rebuild the matches safely
@@ -392,20 +567,30 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           }
           return m;
         });
-
+ 
         const updatedTourneys = tournaments.map(t => t.id === id ? mergedTourney : t);
         setTournaments(updatedTourneys);
         setMatches(updatedMatches);
         syncStorage(updatedTourneys, teams, updatedMatches, sponsors, posts, activeTournamentId);
+
+        firestoreSetTournament(mergedTourney);
+        for (const rm of rescheduledMatches) {
+          firestoreSetMatch(rm);
+        }
         return;
       }
     }
-
+ 
     const updated = tournaments.map(t => t.id === id ? { ...t, ...updates } : t);
     setTournaments(updated);
     syncStorage(updated, teams, matches, sponsors, posts, activeTournamentId);
-  };
 
+    const updatedTourneyObj = updated.find(t => t.id === id);
+    if (updatedTourneyObj) {
+      firestoreSetTournament(updatedTourneyObj);
+    }
+  };
+ 
   const deleteTournament = (id: string) => {
     const updatedTournaments = tournaments.filter(t => t.id !== id);
     const updatedMatches = matches.filter(m => m.tournamentId !== id);
@@ -435,7 +620,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       
       return true;
     });
-
+ 
     setTournaments(updatedTournaments);
     setMatches(updatedMatches);
     setTeams(updatedTeams);
@@ -446,8 +631,18 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       setActiveTournamentIdState(nextActive);
     }
     syncStorage(updatedTournaments, updatedTeams, updatedMatches, sponsors, posts, nextActive);
-  };
 
+    firestoreDeleteTournament(id);
+    const deletedMatches = matches.filter(m => m.tournamentId === id);
+    for (const m of deletedMatches) {
+      firestoreDeleteMatch(m.id, id);
+    }
+    const deletedTeams = teams.filter(t => !updatedTeams.some(ut => ut.id === t.id));
+    for (const t of deletedTeams) {
+      firestoreDeleteTeam(t.id, id);
+    }
+  };
+ 
   // Add tournament Team
   const addTeam = (name: string, playerInputs: { name: string; role: 'Captain' | 'Member' }[]) => {
     const newTeam: Team = {
@@ -463,18 +658,30 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const updated = [...teams, newTeam];
     setTeams(updated);
     syncStorage(tournaments, updated, matches, sponsors, posts, activeTournamentId);
-  };
 
+    const parentTId = activeTournamentId || 'general';
+    firestoreSetTeam(newTeam, parentTId);
+  };
+ 
   const updateTeam = (id: string, name: string, playerList: Player[], avatar?: string) => {
     const updated = teams.map(t => t.id === id ? { ...t, name, players: playerList, avatar: avatar !== undefined ? avatar : t.avatar } : t);
     setTeams(updated);
     syncStorage(tournaments, updated, matches, sponsors, posts, activeTournamentId);
-  };
 
+    const updatedTeamObj = updated.find(t => t.id === id);
+    if (updatedTeamObj) {
+      const parentTId = tournaments.find(t => t.teamIds?.includes(id))?.id || activeTournamentId || 'general';
+      firestoreSetTeam(updatedTeamObj, parentTId);
+    }
+  };
+ 
   const deleteTeam = (id: string) => {
     const updated = teams.filter(t => t.id !== id);
     setTeams(updated);
     syncStorage(tournaments, updated, matches, sponsors, posts, activeTournamentId);
+
+    const parentTId = tournaments.find(t => t.teamIds?.includes(id))?.id || activeTournamentId || 'general';
+    firestoreDeleteTeam(id, parentTId);
   };
 
   const updateDrawnTeams = (
@@ -541,6 +748,19 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
     // 3. Save to localStorage and persistent store
     syncStorage(updatedTournaments, updatedTeams, matches, sponsors, posts, activeTournamentId);
+
+    // Stream directly to Firestore
+    const activeTourney = updatedTournaments.find(t => t.id === tournamentId);
+    if (activeTourney) {
+      firestoreSetTournament(activeTourney);
+    }
+    const derivedTeams = updatedTeams.filter(t => t.id.startsWith(`team-draw-${tournamentId}-`));
+    for (const dt of derivedTeams) {
+      firestoreSetTeam(dt, tournamentId);
+    }
+    for (const da of updatedAthletes) {
+      firestoreSetAthlete(da);
+    }
   };
 
   // Athletes Management Operations
@@ -550,18 +770,27 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const updated = [...athletes, created];
     setAthletes(updated);
     localStorage.setItem('badminton_athletes', JSON.stringify(updated));
+
+    firestoreSetAthlete(created);
   };
 
   const updateAthlete = (id: string, updates: Partial<Athlete>) => {
     const updated = athletes.map(a => a.id === id ? { ...a, ...updates } : a);
     setAthletes(updated);
     localStorage.setItem('badminton_athletes', JSON.stringify(updated));
+
+    const updatedAth = updated.find(a => a.id === id);
+    if (updatedAth) {
+      firestoreSetAthlete(updatedAth);
+    }
   };
 
   const deleteAthlete = (id: string) => {
     const updated = athletes.filter(a => a.id !== id);
     setAthletes(updated);
     localStorage.setItem('badminton_athletes', JSON.stringify(updated));
+
+    firestoreDeleteAthlete(id);
   };
 
   // Sponsor Operations
@@ -573,12 +802,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const updated = [...sponsors, newSponsor];
     setSponsors(updated);
     syncStorage(tournaments, teams, matches, updated, posts, activeTournamentId);
+
+    firestoreSetSponsor(newSponsor);
   };
 
   const deleteSponsor = (id: string) => {
     const updated = sponsors.filter(s => s.id !== id);
     setSponsors(updated);
     syncStorage(tournaments, teams, matches, updated, posts, activeTournamentId);
+
+    firestoreDeleteSponsor(id);
   };
 
   // News Operations
@@ -591,12 +824,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const updated = [newPost, ...posts];
     setPosts(updated);
     syncStorage(tournaments, teams, matches, sponsors, updated, activeTournamentId);
+
+    firestoreSetPost(newPost);
   };
 
   const deletePost = (id: string) => {
     const updated = posts.filter(p => p.id !== id);
     setPosts(updated);
     syncStorage(tournaments, teams, matches, sponsors, updated, activeTournamentId);
+
+    firestoreDeletePost(id);
   };
 
   // Helper to allocate dates based on user schedule configurations (start/end dates, weekdays, hours, duration)
@@ -1215,6 +1452,24 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         activeTournamentId
       );
 
+      if (isFirebaseConfigured && db) {
+        const finalTourneyObj = finalTourneys.find(t => t.id === tournamentId);
+        if (finalTourneyObj) {
+          firestoreSetTournament(finalTourneyObj);
+        }
+        const teamsToSave = freshTeams.filter(t => t.id.startsWith(`team-draw-${tournamentId}-`));
+        for (const t of teamsToSave) {
+          firestoreSetTeam(t, tournamentId);
+        }
+        const oldMatches = matches.filter(m => m.tournamentId === tournamentId);
+        for (const m of oldMatches) {
+          firestoreDeleteMatch(m.id, tournamentId);
+        }
+        for (const m of scheduledNewMatches) {
+          firestoreSetMatch(m);
+        }
+      }
+
     } else if (tourney.format === 'KNOCKOUT') {
       // pure single-elimination bracket
       // supported numbers: 8, 4, 16. In our mock case we fit 8 teams into Quarterfinals.
@@ -1341,6 +1596,24 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         posts,
         activeTournamentId
       );
+
+      if (isFirebaseConfigured && db) {
+        const finalTourneyObj = finalTourneys.find(t => t.id === tournamentId);
+        if (finalTourneyObj) {
+          firestoreSetTournament(finalTourneyObj);
+        }
+        const teamsToSave = freshTeams.filter(t => t.id.startsWith(`team-draw-${tournamentId}-`));
+        for (const t of teamsToSave) {
+          firestoreSetTeam(t, tournamentId);
+        }
+        const oldMatches = matches.filter(m => m.tournamentId === tournamentId);
+        for (const m of oldMatches) {
+          firestoreDeleteMatch(m.id, tournamentId);
+        }
+        for (const m of scheduledNewMatches) {
+          firestoreSetMatch(m);
+        }
+      }
 
     } else if (tourney.format === 'GROUP_KNOCKOUT') {
       const numGroups = tourney.numGroups || 2;
@@ -1519,6 +1792,24 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         posts,
         activeTournamentId
       );
+
+      if (isFirebaseConfigured && db) {
+        const finalTourneyObj = finalTourneys.find(t => t.id === tournamentId);
+        if (finalTourneyObj) {
+          firestoreSetTournament(finalTourneyObj);
+        }
+        const teamsToSave = freshTeams.filter(t => t.id.startsWith(`team-draw-${tournamentId}-`));
+        for (const t of teamsToSave) {
+          firestoreSetTeam(t, tournamentId);
+        }
+        const oldMatches = matches.filter(m => m.tournamentId === tournamentId);
+        for (const m of oldMatches) {
+          firestoreDeleteMatch(m.id, tournamentId);
+        }
+        for (const m of scheduledNewMatches) {
+          firestoreSetMatch(m);
+        }
+      }
     }
   };
 
@@ -1804,6 +2095,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
     setMatches(updatedMatches);
     syncStorage(tournaments, teams, updatedMatches, sponsors, posts, activeTournamentId);
+
+    if (isFirebaseConfigured && db) {
+      const matchTournamentId = matchObj.tournamentId;
+      const tourneyMatches = updatedMatches.filter(m => m.tournamentId === matchTournamentId);
+      for (const m of tourneyMatches) {
+        firestoreSetMatch(m);
+      }
+    }
   };
 
   const updateMatchDetail = (matchId: string, updates: Partial<Match>) => {
@@ -1815,6 +2114,13 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     });
     setMatches(updatedMatches);
     syncStorage(tournaments, teams, updatedMatches, sponsors, posts, activeTournamentId);
+
+    if (isFirebaseConfigured && db) {
+      const updatedMatch = updatedMatches.find(m => m.id === matchId);
+      if (updatedMatch) {
+        firestoreSetMatch(updatedMatch);
+      }
+    }
   };
 
   return (
