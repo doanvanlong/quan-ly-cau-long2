@@ -58,6 +58,9 @@ export default function DivisionDraw() {
 
   const [drawingTourneyId, setDrawingTourneyId] = useState<string | null>(null);
   const [athleteSearch, setAthleteSearch] = useState('');
+  const [localTempAthletes, setLocalTempAthletes] = useState<Record<string, Athlete[]>>({});
+  const [editingAthleteId, setEditingAthleteId] = useState<string | null>(null);
+  const [editingAthleteName, setEditingAthleteName] = useState('');
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [editingTeamName, setEditingTeamName] = useState('');
   const [editingCourtMatchId, setEditingCourtMatchId] = useState<string | null>(null);
@@ -743,13 +746,12 @@ export default function DivisionDraw() {
           id: `ath-auto-${Date.now()}-${Math.floor(Math.random() * 10000)}-${i}`,
           name: `Tuyển thủ hạt giống ${index}`,
           age: 20 + (index % 15),
-          gender: index % 3 === 0 ? 'Nữ' : 'Nam',
+          gender: '',
           nickname: `Hạt giống số ${index}`,
           address: 'Hà Nội',
           phone: `09876543${String(index).padStart(2, '0')}`,
           seed: null
         };
-        addAthlete(fresh);
         pool.push(fresh);
       }
     }
@@ -777,6 +779,66 @@ export default function DivisionDraw() {
     updateTourneyDraftOrState(tourney.id, { 
       athletesAssigned: updated,
       pairedTeams: []
+    });
+  };
+
+  const handleSaveAthleteName = (tourney: Tournament, athleteId: string, newName: string) => {
+    if (!tourney) return;
+    if (!newName.trim()) return;
+
+    // 1. Update in localTempAthletes if present
+    setLocalTempAthletes(prev => {
+      const existing = prev[tourney.id] || [];
+      const updatedList = existing.map(ath => {
+        if (ath.id === athleteId) {
+          return { ...ath, name: newName.trim() };
+        }
+        return ath;
+      });
+      return { ...prev, [tourney.id]: updatedList };
+    });
+
+    // 2. Update in assignedList if selected
+    const assigned = drafts[tourney.id]?.athletesAssigned || tourney.athletesAssigned || [];
+    const updated = assigned.map(ath => {
+      if (ath.id === athleteId) {
+        return { ...ath, name: newName.trim() };
+      }
+      return ath;
+    });
+    updateTourneyDraftOrState(tourney.id, {
+      athletesAssigned: updated
+    });
+    setEditingAthleteId(null);
+  };
+
+  const handleAddTemporaryAthlete = (tourney: Tournament) => {
+    if (!tourney) return;
+    if (!checkTournamentEditable(tourney, "thêm vận động viên tạm thời")) return;
+    
+    // Determine pool size for temporary numbering
+    const tempAthletesForTourney = localTempAthletes[tourney.id] || [];
+    const assignedList = drafts[tourney.id]?.athletesAssigned || tourney.athletesAssigned || [];
+    const totalTempCount = tempAthletesForTourney.length + assignedList.filter(a => !athletes.some(x => x.id === a.id)).length;
+    const index = totalTempCount + 1;
+    
+    const fresh: Athlete = {
+      id: `ath-temp-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      name: `VĐV tạm thời ${index}`,
+      age: 23,
+      gender: '',
+      nickname: `VĐV tự do ${index}`,
+      address: 'Hà Nội',
+      phone: `09876543${String(index).padStart(2, '0')}`,
+      seed: null
+    };
+
+    setLocalTempAthletes(prev => {
+      const existing = prev[tourney.id] || [];
+      return {
+        ...prev,
+        [tourney.id]: [...existing, fresh]
+      };
     });
   };
 
@@ -1051,6 +1113,13 @@ export default function DivisionDraw() {
       return;
     }
 
+    // Persist any temporary/newly-created athletes to the official roster
+    updatedAthletesAssigned.forEach(a => {
+      if (!athletes.some(x => x.id === a.id)) {
+        addAthlete({ ...a, seed: null });
+      }
+    });
+
     const additionalUpdates: Partial<Tournament> = {};
     if (draft?.matchType !== undefined) additionalUpdates.matchType = draft.matchType;
     if (draft?.numSeeds !== undefined) additionalUpdates.numSeeds = draft.numSeeds;
@@ -1085,7 +1154,7 @@ export default function DivisionDraw() {
         id: `ath-created-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`,
         name: `Vận động viên ${index + 1}`,
         age: 23,
-        gender: 'Nam',
+        gender: '',
         nickname: `Slot ${index + 1}`
       };
     }
@@ -1115,6 +1184,15 @@ export default function DivisionDraw() {
 
     // Save/Commit current local drafts to the main database store before runDraw is executed
     const draft = drafts[tourney.id];
+    
+    // Persist any temporary/newly-created athletes to the official roster
+    const finalAssignedList = draft?.athletesAssigned || tourney.athletesAssigned || [];
+    finalAssignedList.forEach(a => {
+      if (!athletes.some(x => x.id === a.id)) {
+        addAthlete({ ...a, seed: null });
+      }
+    });
+
     if (draft) {
       updateTournament(tourney.id, draft);
       setDrafts(prev => {
@@ -1799,8 +1877,9 @@ export default function DivisionDraw() {
 
                             <button
                               type="button"
+                              disabled={assignedList.length === 0}
                               onClick={() => handleRandomAssignSeeds(tourney)}
-                              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shadow-xs"
+                              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold px-3 py-1.5 text-xs rounded-lg transition cursor-pointer flex items-center gap-1 shadow-xs"
                               title="Tự động gieo rắc hạt giống đồng đều cho tất cả VĐV"
                             >
                               <Sparkles className="h-3.5 w-3.5 shrink-0" /> Tự random HG đồng đều
@@ -1808,6 +1887,7 @@ export default function DivisionDraw() {
 
                             <button
                               type="button"
+                              disabled={assignedList.length === 0}
                               onClick={() => {
                                 const updated = assignedList.map(a => ({ ...a, seed: null }));
                                 updateTourneyDraftOrState(tourney.id, { 
@@ -1815,7 +1895,7 @@ export default function DivisionDraw() {
                                   pairedTeams: []
                                 });
                               }}
-                              className="text-slate-500 hover:text-red-500 hover:underline font-bold text-xs px-2 py-1 transition cursor-pointer"
+                              className="text-slate-500 hover:text-red-500 hover:underline disabled:opacity-50 disabled:cursor-not-allowed font-bold text-xs px-2 py-1 transition cursor-pointer"
                             >
                               Xóa sạch hạt giống
                             </button>
@@ -1823,82 +1903,157 @@ export default function DivisionDraw() {
                         </div>
                       )}
 
-                                            {/* Filtered Athletes list container */}
-                      {athletes.length === 0 ? (
-                        <p className="text-center text-xs text-slate-400 py-4 italic font-medium">
-                          Chưa có bất kỳ vận động viên nào trong danh bạ. Hãy qua tab "Đội & Thành Viên" để đăng ký!
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 max-h-56 overflow-y-auto p-1 border border-slate-200 rounded-lg bg-white">
-                          {athletes.filter(a => {
-                            const term = athleteSearch.toLowerCase();
-                            return (
-                              a.name.toLowerCase().includes(term) ||
-                              (a.nickname && a.nickname.toLowerCase().includes(term))
-                            );
-                          }).map((ath) => {
-                            const isSelected = assignedList.some(assigned => assigned.id === ath.id);
-                            // Detect if seed rating is set on this selected athlete
-                            const foundSelected = assignedList.find(assigned => assigned.id === ath.id);
-                            const activeSeed = foundSelected?.seed;
+                      {(() => {
+                        const tempAthletesForTourney = localTempAthletes[tourney.id] || [];
+                        const displayPool = [
+                          ...athletes,
+                          ...tempAthletesForTourney,
+                          ...assignedList.filter(a => !athletes.some(x => x.id === a.id) && !tempAthletesForTourney.some(x => x.id === a.id))
+                        ];
 
-                            return (
-                              <button
-                                key={ath.id}
-                                type="button"
-                                onClick={() => handleToggleAthleteSelection(tourney, ath)}
-                                className={`text-left p-2 rounded-lg border text-xs font-semibold cursor-pointer transition-all duration-150 flex flex-col justify-between min-h-14 ${
-                                  isSelected 
-                                    ? 'bg-blue-50/70 border-blue-400 text-blue-800 ring-1 ring-blue-100' 
-                                    : 'bg-slate-50/40 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                                }`}
-                              >
-                                <div className="flex items-start justify-between w-full">
-                                  <span className="font-bold truncate max-w-[110px]" title={ath.name}>
-                                    {ath.name}
-                                  </span>
-                                  {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
-                                </div>
-                                
-                                <div className="flex items-center justify-between w-full mt-1.5 select-none">
-                                  <span className="text-[10px] text-slate-400 font-medium italic truncate max-w-[80px]">
-                                    {ath.nickname ? `"${ath.nickname}"` : `Không biệt danh`}
-                                  </span>
-                                                                  {isSelected && isDoubles ? (
-                                    <select
-                                      value={activeSeed || ''}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => {
-                                        const val = e.target.value ? Number(e.target.value) : null;
-                                        handleUpdateAthleteSeed(tourney, ath.id, val);
-                                      }}
-                                      className="bg-white hover:bg-slate-55 text-slate-705 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer h-5 transition duration-150"
-                                      title="Chọn thứ tự hạt giống cho VĐV này"
-                                    >
-                                      <option value="">Không HG</option>
-                                      {Array.from({ length: activeNumSeeds }).map((_, rIdx) => {
-                                        const r = rIdx + 1;
-                                        const icon = SEED_EMBLEMS[r] || '⭐';
-                                        return (
-                                          <option key={r} value={r}>
-                                            HG #{r} {icon}
-                                          </option>
-                                        );
-                                      })}
-                                    </select>
+                        if (displayPool.length === 0) {
+                          return (
+                            <div className="bg-amber-50 border border-amber-200/60 rounded-xl p-6 text-center shadow-xs my-1 select-none w-full">
+                              <p className="text-amber-805 text-xs font-bold mb-1.5">
+                                ⚠️ Chưa có bất kỳ vận động viên nào trong danh bạ!
+                              </p>
+                              <p className="text-slate-500 text-[11px] font-medium leading-relaxed max-w-md mx-auto">
+                                Hệ thống chưa tìm thấy dữ liệu thành viên. Vui lòng qua tab <span className="text-blue-605 font-extrabold">"Đội & Thành Viên"</span> để đăng ký thêm vận động viên trước khi chọn đội.
+                              </p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 max-h-56 overflow-y-auto p-1 border border-slate-200 rounded-lg bg-white">
+                            {displayPool.filter(a => {
+                              const term = athleteSearch.toLowerCase();
+                              return (
+                                a.name.toLowerCase().includes(term) ||
+                                (a.nickname && a.nickname.toLowerCase().includes(term))
+                              );
+                            }).map((ath) => {
+                              const isSelected = assignedList.some(assigned => assigned.id === ath.id);
+                              // Detect if seed rating is set on this selected athlete
+                              const foundSelected = assignedList.find(assigned => assigned.id === ath.id);
+                              const activeSeed = foundSelected?.seed;
+                              const isEditingName = editingAthleteId === ath.id;
+                              const isTemporary = !athletes.some(x => x.id === ath.id);
+
+                              return (
+                                <div
+                                  key={ath.id}
+                                  onClick={() => {
+                                    if (isEditingName) return;
+                                    handleToggleAthleteSelection(tourney, ath);
+                                  }}
+                                  className={`text-left p-2 rounded-lg border text-xs font-semibold cursor-pointer transition-all duration-150 flex flex-col justify-between min-h-14 ${
+                                    isSelected 
+                                      ? 'bg-blue-50/70 border-blue-400 text-blue-800 ring-1 ring-blue-100' 
+                                      : 'bg-slate-50/40 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                                  }`}
+                                >
+                                  {isEditingName ? (
+                                    <div className="flex items-center gap-1 w-full" onClick={(e) => e.stopPropagation()}>
+                                      <input
+                                        type="text"
+                                        value={editingAthleteName}
+                                        onChange={(e) => setEditingAthleteName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSaveAthleteName(tourney, ath.id, editingAthleteName);
+                                          } else if (e.key === 'Escape') {
+                                            setEditingAthleteId(null);
+                                          }
+                                        }}
+                                        onBlur={() => handleSaveAthleteName(tourney, ath.id, editingAthleteName)}
+                                        className="bg-white text-slate-800 border border-blue-400 rounded px-1.5 py-0.5 text-xs font-bold w-full focus:outline-none"
+                                        autoFocus
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSaveAthleteName(tourney, ath.id, editingAthleteName)}
+                                        className="text-green-600 hover:bg-green-50 p-1 rounded transition cursor-pointer shrink-0"
+                                        title="Lưu"
+                                      >
+                                        <Check className="h-3 w-3" />
+                                      </button>
+                                    </div>
                                   ) : (
-                                    isSelected && activeSeed && (
-                                      <span className="bg-red-50 text-red-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-red-200">
-                                        HG #{activeSeed} {SEED_EMBLEMS[activeSeed] || '⭐'}
+                                    <div className="flex items-start justify-between w-full min-w-0 gap-1">
+                                      <span 
+                                        className="font-bold truncate max-w-[102px] hover:text-blue-700 cursor-pointer" 
+                                        title={ath.name}
+                                        onClick={(e) => {
+                                          if (isTemporary) {
+                                            e.stopPropagation();
+                                            setEditingAthleteId(ath.id);
+                                            setEditingAthleteName(ath.name);
+                                          }
+                                        }}
+                                      >
+                                        {ath.name}
                                       </span>
-                                    )
+                                      <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        {isTemporary && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingAthleteId(ath.id);
+                                              setEditingAthleteName(ath.name);
+                                            }}
+                                            className="p-0.5 text-slate-400 hover:text-blue-600 rounded hover:bg-slate-100 transition cursor-pointer"
+                                            title="Sửa tên"
+                                          >
+                                            <Edit className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                        {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                                      </div>
+                                    </div>
                                   )}
+                                  
+                                  <div className="flex items-center justify-between w-full mt-1.5 select-none">
+                                    <span className="text-[10px] text-slate-400 font-medium italic truncate max-w-[80px]">
+                                      {ath.nickname ? `"${ath.nickname}"` : `Không biệt danh`}
+                                    </span>
+                                    {isSelected && isDoubles ? (
+                                      <select
+                                        value={activeSeed || ''}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => {
+                                          const val = e.target.value ? Number(e.target.value) : null;
+                                          handleUpdateAthleteSeed(tourney, ath.id, val);
+                                        }}
+                                        className="bg-white hover:bg-slate-55 text-slate-705 text-[10px] font-bold px-1.5 py-0.5 rounded border border-slate-300 focus:outline-none focus:border-blue-500 cursor-pointer h-5 transition duration-150"
+                                        title="Chọn thứ tự hạt giống cho VĐV này"
+                                      >
+                                        <option value="">Không HG</option>
+                                        {Array.from({ length: activeNumSeeds }).map((_, rIdx) => {
+                                          const r = rIdx + 1;
+                                          const icon = SEED_EMBLEMS[r] || '⭐';
+                                          return (
+                                            <option key={r} value={r}>
+                                              HG #{r} {icon}
+                                            </option>
+                                          );
+                                        })}
+                                      </select>
+                                    ) : (
+                                      isSelected && activeSeed && (
+                                        <span className="bg-red-50 text-red-700 text-[8px] font-bold px-1.5 py-0.5 rounded border border-red-200">
+                                          HG #{activeSeed} {SEED_EMBLEMS[activeSeed] || '⭐'}
+                                        </span>
+                                      )
+                                    )}
+                                  </div>
                                 </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
 
                       {/* Quick automatic action buttons */}
                       <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-200 text-xs">
@@ -1910,13 +2065,14 @@ export default function DivisionDraw() {
                           >
                             <Shuffle className="h-3.5 w-3.5" /> Tuyển ngẫu nhiên đủ {requiredAthletesCount} VĐV
                           </button>
-                          
+
                           <button
                             type="button"
-                            onClick={() => handleAutoAllocate(tourney)}
-                            className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                            onClick={() => handleAddTemporaryAthlete(tourney)}
+                            className="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 font-bold px-3.5 py-1.5 rounded-lg text-xs transition cursor-pointer flex items-center gap-1 shadow-xs"
+                            title="Thêm mới 1 Vận động viên tạm thời vào danh sách ứng cử nhưng chưa chọn"
                           >
-                            Nạp chỉ định nhanh
+                            <Sparkles className="h-3.5 w-3.5 text-indigo-600 animate-pulse" /> Thêm VĐV tạm thời
                           </button>
                         </div>
 
@@ -1988,9 +2144,11 @@ export default function DivisionDraw() {
                                                 <span className="text-xs font-bold text-slate-800 block truncate">{ath.name}</span>
                                                 {ath.nickname && <span className="text-[10px] text-slate-400 italic font-semibold">"{ath.nickname}"</span>}
                                               </div>
-                                              <span className="text-[9px] bg-indigo-50 text-indigo-600 font-bold px-1.5 py-0.5 rounded">
-                                                {ath.gender}
-                                              </span>
+                                              {ath.gender && ath.gender.trim() !== '' && (
+                                                <span className="text-[9px] bg-indigo-50 text-indigo-600 font-bold px-1.5 py-0.5 rounded">
+                                                  {ath.gender}
+                                                </span>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
@@ -2027,9 +2185,11 @@ export default function DivisionDraw() {
                                                 <span className="text-xs font-bold text-slate-800 block truncate">{ath.name}</span>
                                                 {ath.nickname && <span className="text-[10px] text-slate-400 italic font-semibold">"{ath.nickname}"</span>}
                                               </div>
-                                              <span className="text-[9px] bg-slate-100 text-slate-500 font-mono px-1.5 py-0.5 rounded font-bold">
-                                                {ath.gender}
-                                              </span>
+                                              {ath.gender && ath.gender.trim() !== '' && (
+                                                <span className="text-[9px] bg-slate-100 text-slate-500 font-mono px-1.5 py-0.5 rounded font-bold">
+                                                  {ath.gender}
+                                                </span>
+                                              )}
                                             </div>
                                           ))}
                                         </div>
@@ -2316,9 +2476,11 @@ export default function DivisionDraw() {
                                                                         <span className="text-xs font-bold text-slate-800 block truncate" title={ath.name}>
                                                                           {ath.name}
                                                                         </span>
-                                                                        <span className={`text-[9px] font-bold px-1 rounded-full ${ath.gender === 'Nữ' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
-                                                                          {ath.gender === 'Nữ' ? 'Nữ' : 'Nam'}
-                                                                        </span>
+                                                                        {ath.gender && ath.gender.trim() !== '' && (
+                                                                          <span className={`text-[9px] font-bold px-1 rounded-full ${ath.gender === 'Nữ' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                                                                            {ath.gender === 'Nữ' ? 'Nữ' : 'Nam'}
+                                                                          </span>
+                                                                        )}
                                                                       </div>
                                                                       {ath.nickname && (
                                                                         <span className="text-[9px] text-slate-450 italic font-semibold block leading-none">
@@ -2501,9 +2663,11 @@ export default function DivisionDraw() {
                                                             <span className="text-xs font-bold text-slate-800 block truncate" title={ath.name}>
                                                               {ath.name}
                                                             </span>
-                                                            <span className={`text-[9px] font-bold px-1 rounded-full ${ath.gender === 'Nữ' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-105'}`}>
-                                                              {ath.gender === 'Nữ' ? 'Nữ' : 'Nam'}
-                                                            </span>
+                                                            {ath.gender && ath.gender.trim() !== '' && (
+                                                              <span className={`text-[9px] font-bold px-1 rounded-full ${ath.gender === 'Nữ' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-blue-50 text-blue-600 border border-blue-105'}`}>
+                                                                {ath.gender === 'Nữ' ? 'Nữ' : 'Nam'}
+                                                              </span>
+                                                            )}
                                                           </div>
                                                           {ath.nickname && (
                                                             <span className="text-[9px] text-slate-450 italic font-semibold block leading-none">
