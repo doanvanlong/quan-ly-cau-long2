@@ -79,7 +79,7 @@ interface TournamentContextType {
   updateDrawnTeams: (tournamentId: string, updatedPairedTeams: PairedTeam[], updatedAthletes: Athlete[], additionalUpdates?: Partial<Tournament>) => void;
   
   // Athletes Management
-  addAthlete: (athlete: Omit<Athlete, 'id'>) => void;
+  addAthlete: (athlete: Omit<Athlete, 'id'> & { id?: string }) => void;
   updateAthlete: (id: string, updates: Partial<Athlete>) => void;
   deleteAthlete: (id: string) => void;
   
@@ -785,9 +785,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   };
 
   // Athletes Management Operations
-  const addAthlete = (newAth: Omit<Athlete, 'id'>) => {
-    const id = 'ath-' + Date.now();
-    const created: Athlete = { ...newAth, id };
+  const addAthlete = (newAth: Omit<Athlete, 'id'> & { id?: string }) => {
+    const id = newAth.id || 'ath-' + Date.now();
+    const gender = newAth.gender && newAth.gender.trim() !== '' ? newAth.gender : 'Nam';
+    const created: Athlete = { ...newAth, id, gender };
     const updated = [...athletes, created];
     setAthletes(updated);
     localStorage.setItem('badminton_athletes', JSON.stringify(updated));
