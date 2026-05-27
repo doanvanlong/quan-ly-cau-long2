@@ -34,17 +34,30 @@ let db: any = null;
 let auth: any = null;
 let firebaseEnabled = false;
 
+// Dual configuration loading: prefer environment variables to allow secure deployment on platforms like Vercel/GitHub
+const metaEnv = (import.meta as any).env || {};
+const activeConfig = {
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY || firebaseConfig?.apiKey,
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || firebaseConfig?.projectId,
+  appId: metaEnv.VITE_FIREBASE_APP_ID || firebaseConfig?.appId,
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig?.authDomain,
+  firestoreDatabaseId: metaEnv.VITE_FIREBASE_DATABASE_ID || firebaseConfig?.firestoreDatabaseId,
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfig?.storageBucket,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig?.messagingSenderId,
+  measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfig?.measurementId,
+};
+
 // Determine if the config has valid initialized parameters
 if (
-  firebaseConfig &&
-  firebaseConfig.apiKey &&
-  firebaseConfig.apiKey !== 'PLACEholder_key_not_set' &&
-  firebaseConfig.projectId &&
-  firebaseConfig.projectId !== 'placeholder-project'
+  activeConfig &&
+  activeConfig.apiKey &&
+  activeConfig.apiKey !== 'PLACEholder_key_not_set' &&
+  activeConfig.projectId &&
+  activeConfig.projectId !== 'placeholder-project'
 ) {
   try {
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    db = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+    app = getApps().length === 0 ? initializeApp(activeConfig) : getApp();
+    db = getFirestore(app, activeConfig.firestoreDatabaseId || undefined);
     auth = getAuth(app);
     firebaseEnabled = true;
     console.log("Firebase initialized successfully in Live Mode.");

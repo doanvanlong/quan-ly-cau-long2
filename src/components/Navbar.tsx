@@ -1,4 +1,4 @@
-import { Trophy, Home, Users, User, Video, Award, Settings, Calendar, AwardIcon, ShieldCheck, Sliders } from 'lucide-react';
+import { Trophy, Home, Users, User, Video, Award, Settings, Calendar, AwardIcon, ShieldCheck, Sliders, Images } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: string;
@@ -21,6 +21,7 @@ export default function Navbar({ currentTab, setCurrentTab, activeTournamentName
 
   const adminNavItems = [
     { id: 'sponsors', label: 'Nhà Tài Trợ', icon: ShieldCheck },
+    { id: 'slides', label: 'Quản Lý Slide', icon: Images },
     { id: 'admin', label: 'Cơ Sở Dữ Liệu', icon: Settings },
   ];
 

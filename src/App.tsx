@@ -17,6 +17,7 @@ import Leaderboard from './components/Leaderboard';
 import NewsFeed from './components/NewsFeed';
 import SponsorsSect from './components/SponsorsSect';
 import AdminDashboard from './components/AdminDashboard';
+import SlideManager from './components/SlideManager';
 import { Trophy } from 'lucide-react';
 
 function TournamentAppContent() {
@@ -55,6 +56,8 @@ function TournamentAppContent() {
         return <NewsFeed selectedPostId={selectedPostId} setSelectedPostId={setSelectedPostId} />;
       case 'sponsors':
         return <SponsorsSect />;
+      case 'slides':
+        return <SlideManager />;
       case 'admin':
         return <AdminDashboard />;
       default:

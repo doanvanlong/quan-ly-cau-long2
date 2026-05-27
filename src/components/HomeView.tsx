@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useTournament } from '../context/TournamentContext';
-import { Calendar, Play, Trophy, Users, Star, ArrowUpRight, Award, Zap, Clock, MapPin } from 'lucide-react';
+import { Calendar, Play, Trophy, Users, Star, ArrowUpRight, Award, Zap, Clock, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion } from 'motion/react';
 import HomeBracketModule from './HomeBracketModule';
 import { Match } from '../types';
@@ -10,7 +11,7 @@ interface HomeViewProps {
 }
 
 export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) {
-  const { tournaments, teams, matches, sponsors, posts, athletes, activeTournamentId } = useTournament();
+  const { tournaments, teams, matches, sponsors, posts, athletes, activeTournamentId, slides } = useTournament();
 
   const activeTournaments = tournaments.filter(t => t.status !== 'DEACTIVE');
   const activeTourney = activeTournaments.find(t => t.id === activeTournamentId) || activeTournaments[0];
@@ -28,6 +29,39 @@ export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) 
     .slice(0, 4);
 
   const recentNews = posts.slice(0, 3);
+
+  // Slides Carousel integration for HomeView
+  const activeSlides = (slides || []).filter(s => s.isActive);
+  const displaySlides = activeSlides.length > 0 ? activeSlides : [
+    {
+      id: 'default-1',
+      imageUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1200',
+      title: 'Nơi Bản Lĩnh Tỏa Sáng, Vinh Quang Chờ Đón Bạn',
+      subtitle: 'Hệ Thống Giải Cầu Lông Chuyên Nghiệp v1.4',
+      description: 'Hỗ trợ toàn diện việc bốc thăm chia bảng tự động, tính toán phân chia hạt giống, tự động hóa bảng xếp hạng vòng tròn, xây dựng sơ đồ thi đấu Knockout trực quan cùng quản lý nhà tài trợ và tin tức giải đấu.',
+      buttonText: 'Tạo giải đấu mới',
+      buttonLink: 'tournament-create'
+    },
+    {
+      id: 'default-2',
+      imageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=1200',
+      title: 'Tự Động Hóa Xếp Lịch & Tính Điểm Số',
+      subtitle: 'Công Cụ Trọng Tài Sáng Tạo',
+      description: 'Tự động phân chia bảng đấu, cập nhật tiến trình thi đấu, tính toán hiệu số điểm và xếp loại vận động viên theo chuẩn thi đấu quốc tế.',
+      buttonText: 'Xem lịch thi đấu',
+      buttonLink: 'schedule'
+    }
+  ];
+
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  useEffect(() => {
+    if (displaySlides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlideIndex(prev => (prev + 1) % displaySlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [displaySlides.length]);
 
   // Group sponsors by tier
   const diamonSponsors = sponsors.filter(s => s.tier === 'KIM_CUONG');
@@ -177,43 +211,120 @@ export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) 
     return `Bán Kết`;
   };
 
+  // Helper to fallback slide backgrounds safely
+  const imageUrlFallback = (url: string) => {
+    return url || 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1200';
+  };
+
   return (
     <div id="home-view" className="space-y-8 py-2">
-      {/* 1. Hero Showcase Banner */}
-      <div className="relative bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 md:p-10 border border-slate-800 shadow-xl overflow-hidden select-none">
-        {/* Abstract background decorative patterns */}
-        <div className="absolute right-0 bottom-0 top-0 w-1/3 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent pointer-events-none rounded-full blur-3xl"></div>
-        <div className="absolute top-10 left-10 w-20 h-20 bg-blue-500/5 rounded-full pointer-events-none blur-xl"></div>
-        
-        <div className="relative z-10 max-w-2xl space-y-5">
-          <div className="inline-flex items-center gap-1.5 bg-blue-500/15 border border-blue-500/30 px-3 py-1 rounded-full text-blue-400 text-[10px] font-mono font-bold uppercase tracking-wider">
-            <Zap className="h-3 w-3 animate-pulse" />
-            Hệ Thống Giải Cầu Lông Chuyên Nghiệp v1.4
-          </div>
-          <h1 className="text-3xl md:text-4.5xl font-sans font-bold text-white tracking-tight leading-tight">
-            Nơi Bản Lĩnh Tỏa Sáng, <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Vinh Quang</span> Chờ Đón Bạn
-          </h1>
-          <p className="text-slate-200 text-xs md:text-sm leading-relaxed">
-            Hỗ trợ toàn diện việc bốc thăm chia bảng tự động, tính toán phân chia hạt giống, tự động hóa bảng xếp hạng vòng tròn, xây dựng sơ đồ thi đấu Knockout trực quan cùng quản lý nhà tài trợ và tin tức giải đấu.
-          </p>
-          <div className="flex flex-wrap gap-2.5 pt-2">
-            <button
-              onClick={() => setCurrentTab('tournament-create')}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-sans font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition duration-150 flex items-center gap-2 cursor-pointer"
+      {/* 1. Hero Sliding Showcase Banner */}
+      <div className="relative h-[280px] md:h-[350px] w-full bg-slate-950 rounded-2xl border border-slate-850 shadow-2xl overflow-hidden select-none">
+        {displaySlides.map((slide, index) => {
+          const isCurrent = index === currentSlideIndex;
+          return (
+            <div
+              key={slide.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                isCurrent 
+                  ? 'opacity-100 pointer-events-auto z-10' 
+                  : 'opacity-0 pointer-events-none z-0'
+              }`}
             >
-              <Trophy className="h-4 w-4" />
-              Tạo giải đấu mới
-            </button>
+              {/* Complex high-fidelity image rendering with crossfade gradients */}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/70 to-slate-950/15 z-10" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-transparent to-transparent z-10" />
+              
+              <img
+                src={imageUrlFallback(slide.imageUrl)}
+                alt={slide.title}
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+
+              {/* Decorative radial lighting */}
+              <div className="absolute right-0 bottom-0 top-0 w-1/2 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent pointer-events-none rounded-full blur-3xl z-10 animate-pulse"></div>
+
+              {/* Text / Action overlay using framer motion to cascade slide content */}
+              <div className="absolute inset-0 flex flex-col justify-center px-6 md:px-12 py-10 z-20 text-left max-w-3xl space-y-4">
+                {isCurrent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="space-y-4"
+                  >
+                    {slide.subtitle && (
+                      <div className="inline-flex items-center gap-1.5 bg-blue-500/15 border border-blue-500/30 px-3 py-1 rounded-full text-blue-400 text-[10px] font-mono font-bold uppercase tracking-widest">
+                        <Zap className="h-3.5 w-3.5 animate-bounce" />
+                        {slide.subtitle}
+                      </div>
+                    )}
+
+                    <h1 className="text-2xl md:text-3.5xl lg:text-4xl font-sans font-black text-white tracking-tight leading-tight uppercase">
+                      {slide.title}
+                    </h1>
+
+                    {slide.description && (
+                      <p className="text-slate-300/90 text-xs md:text-sm font-light leading-relaxed max-w-2xl line-clamp-2 md:line-clamp-3">
+                        {slide.description}
+                      </p>
+                    )}
+
+                    {slide.buttonText && (
+                      <div className="flex flex-wrap gap-2.5 pt-1.5">
+                        <button
+                          onClick={() => {
+                            const linkVal = slide.buttonLink || 'tournament-create';
+                            setCurrentTab(linkVal);
+                          }}
+                          className="bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 text-white font-sans font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition duration-150 flex items-center gap-2 cursor-pointer border border-transparent"
+                        >
+                          <Trophy className="h-4 w-4" />
+                          {slide.buttonText}
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Dynamic Nav Bullets */}
+        {displaySlides.length > 1 && (
+          <div className="absolute bottom-5 left-6 md:left-12 z-30 flex gap-2.5 items-center bg-slate-900/40 backdrop-blur-xs px-3.5 py-1.5 rounded-full border border-white/5">
             <button
-              onClick={() => setCurrentTab('teams')}
-              className="bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-white font-sans font-bold text-xs px-5 py-2.5 rounded-xl transition duration-150 flex items-center gap-2 cursor-pointer"
+              onClick={() => setCurrentSlideIndex(prev => (prev - 1 + displaySlides.length) % displaySlides.length)}
+              className="text-white/60 hover:text-white hover:scale-110 transition shrink-0 p-0.5"
+              title="Slide trước"
             >
-              <Users className="h-4 w-4" />
-              Đăng ký đội tuyển
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex gap-1.5">
+              {displaySlides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentSlideIndex(index)}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    index === currentSlideIndex 
+                      ? 'w-5 bg-blue-500' 
+                      : 'w-1.5 bg-white/40 hover:bg-white/70'
+                  }`}
+                  title={`Trang ${index + 1}`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setCurrentSlideIndex(prev => (prev + 1) % displaySlides.length)}
+              className="text-white/60 hover:text-white hover:scale-110 transition shrink-0 p-0.5"
+              title="Slide tiếp"
+            >
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* 2. Live & Upcoming Highlight Panel */}

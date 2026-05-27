@@ -134,3 +134,15 @@ export interface GroupStanding {
   pointsWon: number; // actual match outcome points (e.g., 3-0 wins -> points)
   pointsDifference: number; // rally points score diff
 }
+
+export interface BannerSlide {
+  id: string;
+  imageUrl: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  isActive: boolean;
+  order: number;
+}

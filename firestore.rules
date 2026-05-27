@@ -65,5 +65,10 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read, write: if true;
     }
+
+    // Banner Slides match block
+    match /slides/{slideId} {
+      allow read, write: if true;
+    }
   }
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Team, Sponsor, Post, Tournament, Match, Player, GroupStanding, MatchSet, Athlete, PairedTeam } from '../types';
+import { Team, Sponsor, Post, Tournament, Match, Player, GroupStanding, MatchSet, Athlete, PairedTeam, BannerSlide } from '../types';
 import { mockTeams, mockSponsors, mockPosts, mockTournaments, mockMatches } from '../data/mockData';
 import { db, auth, firebaseEnabled as isFirebaseConfigured, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, collectionGroup, getDoc } from 'firebase/firestore';
@@ -91,11 +91,53 @@ interface TournamentContextType {
   addPost: (post: Omit<Post, 'id' | 'date'>) => void;
   updatePost: (id: string, updates: Partial<Post>) => void;
   deletePost: (id: string) => void;
+
+  // Banner Slides
+  slides: BannerSlide[];
+  addSlide: (slide: Omit<BannerSlide, 'id'>) => void;
+  updateSlide: (id: string, updates: Partial<BannerSlide>) => void;
+  deleteSlide: (id: string) => void;
   
   // Reset database to default
   resetData: () => void;
   uploadAllToFirebase?: () => Promise<void>;
 }
+
+const defaultSlides: BannerSlide[] = [
+  {
+    id: 'slide-1',
+    imageUrl: 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1200',
+    title: 'Nơi Bản Lĩnh Tỏa Sáng, Vinh Quang Chờ Đón Bạn',
+    subtitle: 'Hệ Thống Giải Cầu Lông Chuyên Nghiệp v1.4',
+    description: 'Hỗ trợ toàn diện việc bốc thăm chia bảng tự động, tính toán phân chia hạt giống, tự động hóa bảng xếp hạng vòng tròn, xây dựng sơ đồ thi đấu Knockout trực quan cùng quản lý nhà tài trợ và tin tức giải đấu.',
+    buttonText: 'Tạo giải đấu mới',
+    buttonLink: 'tournament-create',
+    isActive: true,
+    order: 1
+  },
+  {
+    id: 'slide-2',
+    imageUrl: 'https://images.unsplash.com/photo-1517649763962-0c623066013b?q=80&w=1200',
+    title: 'Tự Động Hóa Xếp Lịch & Tính Điểm Số',
+    subtitle: 'Công Cụ Trọng Tài Sáng Tạo',
+    description: 'Tự động phân chia bảng đấu, cập nhật tiến trình thi đấu, tính toán hiệu số điểm và xếp loại vận động viên theo chuẩn thi đấu quốc tế.',
+    buttonText: 'Xem lịch thi đấu',
+    buttonLink: 'schedule',
+    isActive: true,
+    order: 2
+  },
+  {
+    id: 'slide-3',
+    imageUrl: 'https://images.unsplash.com/photo-1521537634199-673689440044?q=80&w=1200',
+    title: 'Đồng Hành Cùng Các Nhà Tài Trợ Vàng',
+    subtitle: 'Phát Triển Phong Trào Cầu Lông',
+    description: 'SmashManager tự hào đồng hành cùng các đơn vị, nhà tài trợ mang lại sân chơi thể thao lành mạnh, minh bạch và chuyên nghiệp.',
+    buttonText: 'Hợp tác nhà tài trợ',
+    buttonLink: 'sponsors',
+    isActive: true,
+    order: 3
+  }
+];
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
 
@@ -106,6 +148,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [slides, setSlides] = useState<BannerSlide[]>([]);
   const [activeTournamentId, setActiveTournamentIdState] = useState<string | null>(null);
   
   // Firebase configuration statuses
@@ -272,6 +315,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       for (const m of mockMatches) {
         await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), cleanUndefined(m));
       }
+      // 7. Slides
+      for (const s of defaultSlides) {
+        await setDoc(doc(db, 'slides', s.id), cleanUndefined(s));
+      }
       console.log("Firestore successfully populated and shared across all devices.");
     } catch (error) {
       console.error("Error auto-populating empty Firestore collections:", error);
@@ -286,7 +333,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const localSponsors = localStorage.getItem('badminton_sponsors');
     const localPosts = localStorage.getItem('badminton_posts');
     const localActive = localStorage.getItem('badminton_active_id');
-    const localAthletes = localStorage.getItem('badminton_athletes');
+        const localAthletes = localStorage.getItem('badminton_athletes');
+    const localSlides = localStorage.getItem('badminton_slides');
 
     const parsedTourneys = localTourneys ? JSON.parse(localTourneys) : mockTournaments;
     const parsedTeams = localTeams ? JSON.parse(localTeams) : mockTeams;
@@ -294,6 +342,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const parsedSponsors = localSponsors ? JSON.parse(localSponsors) : mockSponsors;
     const parsedPosts = localPosts ? JSON.parse(localPosts) : mockPosts;
     const parsedAthletes = localAthletes ? JSON.parse(localAthletes) : defaultMockAthletes;
+    const parsedSlides = localSlides ? JSON.parse(localSlides) : defaultSlides;
     const finalActive = localActive || (parsedTourneys.length > 0 ? parsedTourneys[0].id : 'tour-demo');
 
     setTournaments(parsedTourneys);
@@ -301,6 +350,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setMatches(parsedMatches);
     setSponsors(parsedSponsors);
     setPosts(parsedPosts);
+    setSlides(parsedSlides);
     setActiveTournamentIdState(finalActive);
     setAthletes(parsedAthletes);
 
@@ -311,6 +361,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     if (!localSponsors) localStorage.setItem('badminton_sponsors', JSON.stringify(parsedSponsors));
     if (!localPosts) localStorage.setItem('badminton_posts', JSON.stringify(parsedPosts));
     if (!localAthletes) localStorage.setItem('badminton_athletes', JSON.stringify(parsedAthletes));
+    if (!localSlides) localStorage.setItem('badminton_slides', JSON.stringify(parsedSlides));
     if (!localActive) localStorage.setItem('badminton_active_id', finalActive);
   }, []);
 
@@ -397,6 +448,28 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       setMatches(list);
     }, (err) => console.error(err));
 
+    // Subscribe to slides
+    const unsubSlides = onSnapshot(collection(db, 'slides'), (snapshot) => {
+      if (snapshot.empty) {
+        getDoc(doc(db, 'system_state', 'config')).then((configDoc) => {
+          if (configDoc.exists() && configDoc.data()?.initialized) {
+            setSlides([]);
+          } else {
+            defaultSlides.forEach(s => {
+              setDoc(doc(db, 'slides', s.id), s).catch(e => console.error(e));
+            });
+          }
+        }).catch(() => setSlides(defaultSlides));
+      } else {
+        const list: BannerSlide[] = [];
+        snapshot.forEach(docSnap => {
+          list.push(docSnap.data() as BannerSlide);
+        });
+        list.sort((a, b) => (a.order || 0) - (b.order || 0));
+        setSlides(list);
+      }
+    }, (err) => console.error("Firestore subscription slides error:", err));
+
     return () => {
       unsubTournaments();
       unsubSponsors();
@@ -404,6 +477,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       unsubAthletes();
       unsubTeams();
       unsubMatches();
+      unsubSlides();
     };
   }, []);
 
@@ -884,6 +958,59 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     syncStorage(tournaments, teams, matches, sponsors, updated, activeTournamentId);
 
     firestoreDeletePost(id);
+  };
+
+  // Slides Firestore syncing
+  const firestoreSetSlide = async (s: BannerSlide) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await setDoc(doc(db, 'slides', s.id), cleanUndefined(s));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.UPDATE, `slides/${s.id}`);
+      }
+    }
+  };
+
+  const firestoreDeleteSlide = async (id: string) => {
+    if (isFirebaseConfigured && db) {
+      try {
+        await deleteDoc(doc(db, 'slides', id));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, `slides/${id}`);
+      }
+    }
+  };
+
+  // Slides CRUD operations
+  const addSlide = (s: Omit<BannerSlide, 'id'>) => {
+    const newSlide: BannerSlide = {
+      ...s,
+      id: 'slide-' + Date.now()
+    };
+    const updated = [...slides, newSlide].sort((a, b) => a.order - b.order);
+    setSlides(updated);
+    localStorage.setItem('badminton_slides', JSON.stringify(updated));
+
+    firestoreSetSlide(newSlide);
+  };
+
+  const updateSlide = (id: string, updates: Partial<BannerSlide>) => {
+    const updated = slides.map(s => s.id === id ? { ...s, ...updates } : s).sort((a, b) => a.order - b.order);
+    setSlides(updated);
+    localStorage.setItem('badminton_slides', JSON.stringify(updated));
+
+    const updatedSlide = updated.find(s => s.id === id);
+    if (updatedSlide) {
+      firestoreSetSlide(updatedSlide);
+    }
+  };
+
+  const deleteSlide = (id: string) => {
+    const updated = slides.filter(s => s.id !== id);
+    setSlides(updated);
+    localStorage.setItem('badminton_slides', JSON.stringify(updated));
+
+    firestoreDeleteSlide(id);
   };
 
   // Helper to allocate dates based on user schedule configurations (start/end dates, weekdays, hours, duration)
@@ -2204,6 +2331,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         addPost,
         updatePost,
         deletePost,
+        slides,
+        addSlide,
+        updateSlide,
+        deleteSlide,
         resetData,
         uploadAllToFirebase
       }}
