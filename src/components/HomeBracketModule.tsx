@@ -536,7 +536,7 @@ export default function HomeBracketModule() {
                        </div>
                      ) : (
                       level1Finals.map((m) => (
-                        <div key={m.id} className="bg-gradient-to-b from-blue-50/10 to-blue-50/60 border-2 border-blue-400 p-3 rounded-xl space-y-2 shadow-sm relative">
+                        <div key={m.id} className="bg-gradient-to-b from-blue-50/10 to-blue-50/60 border border-blue-300 p-3 rounded-xl space-y-2 shadow-sm relative">
                           <span className="absolute -top-2.5 right-3 bg-amber-500 text-white text-[8px] font-mono font-extrabold px-2 py-0.5 rounded uppercase shadow-xs">
                             Tranh Cúp Vàng
                           </span>

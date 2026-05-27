@@ -194,7 +194,7 @@ export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) 
             Nơi Bản Lĩnh Tỏa Sáng, <br/>
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Vinh Quang</span> Chờ Đón Bạn
           </h1>
-          <p className="text-slate-350 text-xs md:text-sm leading-relaxed">
+          <p className="text-slate-200 text-xs md:text-sm leading-relaxed">
             Hỗ trợ toàn diện việc bốc thăm chia bảng tự động, tính toán phân chia hạt giống, tự động hóa bảng xếp hạng vòng tròn, xây dựng sơ đồ thi đấu Knockout trực quan cùng quản lý nhà tài trợ và tin tức giải đấu.
           </p>
           <div className="flex flex-wrap gap-2.5 pt-2">
@@ -248,10 +248,10 @@ export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) 
                 const lastSetIndex = match.scoreSets.length > 0 ? match.scoreSets.length - 1 : 0;
                 
                 return (
-                  <div key={match.id} className="bg-white border-2 border-slate-200/90 hover:border-blue-500/30 rounded-2xl shadow-xs transition-all duration-300 overflow-hidden">
+                  <div key={match.id} className="bg-white border border-slate-205 hover:border-blue-500/40 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
                     
                     {/* Top Broadcast Header: Tournament, Court, Status */}
-                    <div className="bg-slate-50 px-4 py-3 border-b border-slate-150 flex flex-wrap items-center justify-between gap-2">
+                    <div className="bg-slate-50/70 px-4 py-3 border-b border-slate-200/60 flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="bg-rose-50 border border-rose-100 text-rose-600 text-[9px] font-mono font-black py-0.5 px-2 rounded-md tracking-wider uppercase animate-pulse flex items-center gap-1 select-none">
                           <span className="h-1.5 w-1.5 rounded-full bg-rose-500 inline-block animate-ping" />
@@ -275,7 +275,7 @@ export default function HomeView({ setCurrentTab, onPostClick }: HomeViewProps) 
                     <div className="p-4 md:p-5 flex flex-col gap-4">
                       
                       {/* Grid Scoreboard Container */}
-                      <div className="border border-slate-150 rounded-xl overflow-hidden shadow-2xs divide-y divide-slate-100 bg-slate-50/50">
+                      <div className="border border-slate-200/95 rounded-xl overflow-hidden shadow-2xs divide-y divide-slate-100 bg-slate-50/50">
                         
                         {/* Player-Team 1 Row */}
                         <div className={`flex items-center justify-between px-3 md:px-5 py-3 transition ${isT1Serving ? 'bg-amber-500/[0.04]' : ''}`}>

@@ -4,6 +4,26 @@ import { mockTeams, mockSponsors, mockPosts, mockTournaments, mockMatches } from
 import { db, auth, firebaseEnabled as isFirebaseConfigured, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, collectionGroup } from 'firebase/firestore';
 
+function cleanUndefined(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanUndefined(item));
+  }
+  if (typeof obj === 'object') {
+    const cleaned: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const value = obj[key];
+        if (value !== undefined) {
+          cleaned[key] = cleanUndefined(value);
+        }
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 const defaultMockAthletes: Athlete[] = [
   { id: 'ath-1', name: 'Nguyễn Tiến Minh', age: 39, gender: 'Nam', nickname: 'Minh Legend', address: 'Quận 1, TP.HCM', phone: '0901234567' },
   { id: 'ath-2', name: 'Lê Đức Phát', age: 26, gender: 'Nam', nickname: 'Phát Sét', address: 'Quận Đống Đa, Hà Nội', phone: '0912345678' },
@@ -69,6 +89,7 @@ interface TournamentContextType {
   
   // News
   addPost: (post: Omit<Post, 'id' | 'date'>) => void;
+  updatePost: (id: string, updates: Partial<Post>) => void;
   deletePost: (id: string) => void;
   
   // Reset database to default
@@ -97,7 +118,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetTournament = async (t: Tournament) => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'tournaments', t.id), t);
+        await setDoc(doc(db, 'tournaments', t.id), cleanUndefined(t));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `tournaments/${t.id}`);
       }
@@ -117,7 +138,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetTeam = async (team: Team, tournamentId: string = 'general') => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'tournaments', tournamentId, 'teams', team.id), team);
+        await setDoc(doc(db, 'tournaments', tournamentId, 'teams', team.id), cleanUndefined(team));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `tournaments/${tournamentId}/teams/${team.id}`);
       }
@@ -137,7 +158,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetMatch = async (match: Match) => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'tournaments', match.tournamentId, 'matches', match.id), match);
+        await setDoc(doc(db, 'tournaments', match.tournamentId, 'matches', match.id), cleanUndefined(match));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `tournaments/${match.tournamentId}/matches/${match.id}`);
       }
@@ -157,7 +178,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetSponsor = async (s: Sponsor) => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'sponsors', s.id), s);
+        await setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `sponsors/${s.id}`);
       }
@@ -177,7 +198,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetPost = async (p: Post) => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'posts', p.id), p);
+        await setDoc(doc(db, 'posts', p.id), cleanUndefined(p));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `posts/${p.id}`);
       }
@@ -197,7 +218,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const firestoreSetAthlete = async (a: Athlete) => {
     if (isFirebaseConfigured && db) {
       try {
-        await setDoc(doc(db, 'athletes', a.id), a);
+        await setDoc(doc(db, 'athletes', a.id), cleanUndefined(a));
       } catch (err) {
         handleFirestoreError(err, OperationType.UPDATE, `athletes/${a.id}`);
       }
@@ -221,19 +242,19 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       console.log("Auto-initializing Firestore with high-fidelity system defaults...");
       // 1. Tournaments
       for (const t of mockTournaments) {
-        await setDoc(doc(db, 'tournaments', t.id), t);
+        await setDoc(doc(db, 'tournaments', t.id), cleanUndefined(t));
       }
       // 2. Sponsors
       for (const s of mockSponsors) {
-        await setDoc(doc(db, 'sponsors', s.id), s);
+        await setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s));
       }
       // 3. Posts
       for (const p of mockPosts) {
-        await setDoc(doc(db, 'posts', p.id), p);
+        await setDoc(doc(db, 'posts', p.id), cleanUndefined(p));
       }
       // 4. Athletes
       for (const a of defaultMockAthletes) {
-        await setDoc(doc(db, 'athletes', a.id), a);
+        await setDoc(doc(db, 'athletes', a.id), cleanUndefined(a));
       }
       // 5. Teams
       for (const team of mockTeams) {
@@ -242,11 +263,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         if (associated) {
           parentTId = associated.id;
         }
-        await setDoc(doc(db, 'tournaments', parentTId, 'teams', team.id), team);
+        await setDoc(doc(db, 'tournaments', parentTId, 'teams', team.id), cleanUndefined(team));
       }
       // 6. Matches
       for (const m of mockMatches) {
-        await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), m);
+        await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), cleanUndefined(m));
       }
       console.log("Firestore successfully populated and shared across all devices.");
     } catch (error) {
@@ -381,19 +402,19 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     try {
       // 1. Tournaments
       for (const t of tournaments) {
-        await setDoc(doc(db, 'tournaments', t.id), t);
+        await setDoc(doc(db, 'tournaments', t.id), cleanUndefined(t));
       }
       // 2. Sponsors
       for (const s of sponsors) {
-        await setDoc(doc(db, 'sponsors', s.id), s);
+        await setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s));
       }
       // 3. Posts
       for (const p of posts) {
-        await setDoc(doc(db, 'posts', p.id), p);
+        await setDoc(doc(db, 'posts', p.id), cleanUndefined(p));
       }
       // 4. Athletes
       for (const a of athletes) {
-        await setDoc(doc(db, 'athletes', a.id), a);
+        await setDoc(doc(db, 'athletes', a.id), cleanUndefined(a));
       }
       // 5. Teams
       for (const team of teams) {
@@ -404,11 +425,11 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         } else if (activeTournamentId) {
           parentTId = activeTournamentId;
         }
-        await setDoc(doc(db, 'tournaments', parentTId, 'teams', team.id), team);
+        await setDoc(doc(db, 'tournaments', parentTId, 'teams', team.id), cleanUndefined(team));
       }
       // 6. Matches
       for (const m of matches) {
-        await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), m);
+        await setDoc(doc(db, 'tournaments', m.tournamentId, 'matches', m.id), cleanUndefined(m));
       }
       alert("Đồng bộ dữ liệu bảng đấu lên Firestore thành công!");
     } catch (e: any) {
@@ -826,6 +847,17 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     syncStorage(tournaments, teams, matches, sponsors, updated, activeTournamentId);
 
     firestoreSetPost(newPost);
+  };
+
+  const updatePost = (id: string, updates: Partial<Post>) => {
+    const updated = posts.map(p => p.id === id ? { ...p, ...updates } : p);
+    setPosts(updated);
+    syncStorage(tournaments, teams, matches, sponsors, updated, activeTournamentId);
+
+    const updatedPost = updated.find(p => p.id === id);
+    if (updatedPost) {
+      firestoreSetPost(updatedPost);
+    }
   };
 
   const deletePost = (id: string) => {
@@ -2152,6 +2184,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         addSponsor,
         deleteSponsor,
         addPost,
+        updatePost,
         deletePost,
         resetData,
         uploadAllToFirebase

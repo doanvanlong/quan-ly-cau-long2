@@ -416,9 +416,20 @@ export default function TournamentManage() {
   const diffMinVal = (ehVal * 60 + emVal) - (shVal * 60 + smVal);
   const hoursPerDayVal = Math.max(0, Number((diffMinVal / 60).toFixed(1)));
 
+  // Check if tournament has started based on system local date
+  const getTodayString = () => {
+    const d = new Date();
+    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+    const localDate = new Date(utc + (3600000 * 7)); // Vietnam GMT+7
+    const yyyy = localDate.getFullYear();
+    const mm = String(localDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(localDate.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   // Determine current timeline status based on dates
   const getTournamentStatusInfo = (t: Tournament) => {
-    const todayStr = '2026-05-25'; // From metadata rules
+    const todayStr = getTodayString();
     const today = new Date(todayStr);
     const start = t.startDate ? new Date(t.startDate) : null;
     const end = t.endDate ? new Date(t.endDate) : null;
@@ -482,24 +493,22 @@ export default function TournamentManage() {
       return;
     }
 
-    // Check if tournament has started based on system local date
-    const getTodayString = () => {
-      const d = new Date();
-      const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-      const localDate = new Date(utc + (3600000 * 7)); // Vietnam GMT+7
-      const yyyy = localDate.getFullYear();
-      const mm = String(localDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(localDate.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
-    if (status !== 'DEACTIVE' && currentTourneyObj?.status !== 'DEACTIVE' && currentTourneyObj?.startDate && getTodayString() >= currentTourneyObj.startDate) {
-      window.alert("⚠️ Giải đấu đã bắt đầu nên không thể thay đổi vào lúc này.");
-      return;
-    }
+    const todayStr = getTodayString();
+    const hasStarted = status !== 'DEACTIVE' && currentTourneyObj?.status !== 'DEACTIVE' && currentTourneyObj?.startDate && todayStr >= currentTourneyObj.startDate;
 
     if (!name.trim()) {
       setAlert({ type: 'error', msg: 'Tên giải đấu không được bỏ trống!' });
+      return;
+    }
+
+    if (hasStarted) {
+      // If tournament has started, only allow updating the tournament name
+      updateTournament(selectedId, { name });
+      setAlert({ type: 'success', msg: `Cập nhật tên giải đấu "${name}" thành công!` });
+      setTimeout(() => {
+        setAlert(null);
+        setExpandedId('');
+      }, 2000);
       return;
     }
 
@@ -654,6 +663,7 @@ export default function TournamentManage() {
         {sortedTournaments.map((t) => {
           const statusInfo = getTournamentStatusInfo(t);
           const isExpanded = expandedId === t.id;
+          const isStarted = !!(t.startDate && getTodayString() >= t.startDate && t.status !== 'DEACTIVE' && t.status !== 'FINISHED');
           
           return (
             <div 
@@ -789,6 +799,18 @@ export default function TournamentManage() {
                         <h5 className="text-xs font-bold uppercase tracking-wider text-amber-800">GIẢI ĐẤU ĐÃ KẾT THÚC (CHỈ XEM)</h5>
                         <p className="text-[11px] text-amber-700 leading-relaxed">
                           Giải đấu này đã hoàn tất và kết thúc hoàn toàn. Tính năng điều chỉnh cấu hình và quản lý thông số giải đấu đã bị khóa. Bạn chỉ có thể xem các thông tin chi tiết.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {isStarted && (
+                    <div className="bg-blue-50 border-2 border-blue-200 text-blue-900 rounded-2xl p-4 flex items-start gap-3 shadow-sm mb-1">
+                      <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                      <div className="text-left space-y-1">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-blue-800">GIẢI ĐẤU ĐANG DIỄN RA</h5>
+                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                          Giải đấu đã chính thức bắt đầu (theo ngày diễn ra). Do đó bạn chỉ có thể thay đổi <strong>Tên giải đấu</strong> để lưu thành công. Các cấu hình thể thức hay sân bãi khác đã được khóa để bảo toàn dữ liệu.
                         </p>
                       </div>
                     </div>

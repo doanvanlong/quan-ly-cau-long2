@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useTournament } from '../context/TournamentContext';
-import { Video, Plus, Trash2, Calendar, FileText, Globe, Play, X, User } from 'lucide-react';
+import { Video, Plus, Trash2, Calendar, FileText, Globe, Play, X, User, Edit } from 'lucide-react';
+import { getYouTubeEmbedUrl } from '../utils/youtube';
 import { Post } from '../types';
+import RichTextEditor from './RichTextEditor';
 
 interface NewsFeedProps {
   selectedPostId: string | null;
@@ -9,10 +11,11 @@ interface NewsFeedProps {
 }
 
 export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeedProps) {
-  const { posts, addPost, deletePost } = useTournament();
+  const { posts, addPost, updatePost, deletePost } = useTournament();
 
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'News' | 'Video'>('ALL');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
 
   // Form Inputs
   const [title, setTitle] = useState('');
@@ -27,6 +30,49 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
     return p.category === activeCategory;
   });
 
+  const handleToggleAdding = () => {
+    if (isAdding) {
+      setIsAdding(false);
+      setEditingPostId(null);
+      setTitle('');
+      setContent('');
+      setImage('');
+      setVideoUrl('');
+      setCategory('News');
+      setAuthor('Ban Biên Tập');
+    } else {
+      setIsAdding(true);
+      setEditingPostId(null);
+      setTitle('');
+      setContent('');
+      setImage('');
+      setVideoUrl('');
+      setCategory('News');
+      setAuthor('Ban Biên Tập');
+    }
+  };
+
+  const handleStartEdit = (post: Post) => {
+    setEditingPostId(post.id);
+    setTitle(post.title);
+    setContent(post.content);
+    setCategory(post.category as any || 'News');
+    setImage(post.image);
+    setVideoUrl(post.videoUrl || '');
+    setAuthor(post.author);
+    setIsAdding(true);
+    
+    // Smooth scroll to the form top
+    setTimeout(() => {
+      const feedForm = document.getElementById('visual-news-editor-form');
+      if (feedForm) {
+        feedForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
@@ -34,14 +80,28 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
     // Standard default badminton action images
     const defaultImg = image.trim() || 'https://images.unsplash.com/photo-1599447421416-3414500d18a5?w=600&auto=format&fit=crop&q=80';
 
-    addPost({
-      title,
-      content,
-      category,
-      image: defaultImg,
-      videoUrl: videoUrl.trim() || undefined,
-      author: author.trim() || 'Tuyển trọng tài'
-    });
+    const parsedVideoUrl = videoUrl.trim() ? getYouTubeEmbedUrl(videoUrl) : undefined;
+
+    if (editingPostId) {
+      updatePost(editingPostId, {
+        title,
+        content,
+        category,
+        image: defaultImg,
+        videoUrl: parsedVideoUrl,
+        author: author.trim() || 'Ban Biên Tập'
+      });
+      setEditingPostId(null);
+    } else {
+      addPost({
+        title,
+        content,
+        category,
+        image: defaultImg,
+        videoUrl: parsedVideoUrl,
+        author: author.trim() || 'Tuyển trọng tài'
+      });
+    }
 
     setTitle('');
     setContent('');
@@ -68,7 +128,7 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
         </div>
 
         <button
-          onClick={() => setIsAdding(!isAdding)}
+          onClick={handleToggleAdding}
           className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition self-start shadow-sm cursor-pointer ${
             isAdding 
               ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' 
@@ -97,10 +157,12 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
         ))}
       </div>
 
-      {/* Adding form */}
+      {/* Adding/Editing form */}
       {isAdding && (
-        <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 space-y-5 shadow-sm animate-in fade-in duration-200">
-          <h2 className="font-bold text-blue-600 text-xs tracking-wider uppercase font-mono">VIẾT BÀI ĐĂNG HOẶC ĐĂNG VIDEO MỚI</h2>
+        <form id="visual-news-editor-form" onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-xl p-5 md:p-6 space-y-5 shadow-sm animate-in fade-in duration-200">
+          <h2 className="font-bold text-blue-600 text-xs tracking-wider uppercase font-mono">
+            {editingPostId ? 'CHỈNH SỬA BÀI VIẾT HOẶC VIDEO HIGHLIGHTS' : 'VIẾT BÀI ĐĂNG HOẶC ĐĂNG VIDEO MỚI'}
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5 md:col-span-2">
@@ -163,12 +225,10 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
 
             <div className="space-y-1.5 md:col-span-2">
               <label className="text-slate-655 text-xs font-semibold">Nội dung chi tiết viết bài <span className="text-red-500">*</span></label>
-              <textarea
-                placeholder="Nội dung truyền hình trực tiếp, nhận định các pha cầu đập nảy lửa..."
+              <RichTextEditor
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full h-32 bg-slate-55 text-slate-850 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 focus:bg-white resize-none transition"
-                required
+                onChange={(val) => setContent(val)}
+                placeholder="Nội dung truyền hình trực tiếp, nhận định các pha cầu đập nảy lửa, định dạng văn bản chuyên nghiệp..."
               />
             </div>
           </div>
@@ -178,7 +238,7 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
               type="submit"
               className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-xs font-bold shadow-sm shadow-blue-200 cursor-pointer transition"
             >
-              Phát hành tin tức
+              {editingPostId ? 'Lưu thay đổi bài viết' : 'Phát hành tin tức'}
             </button>
           </div>
         </form>
@@ -216,8 +276,8 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
                 <h3 className="font-bold text-slate-800 leading-snug group-hover:text-blue-600 transition-colors text-xs md:text-sm line-clamp-2">
                   {post.title}
                 </h3>
-                <p className="text-slate-500 text-[11px] leading-relaxed line-clamp-3">
-                  {post.content}
+                <p className="text-slate-500 text-[11px] leading-relaxed line-clamp-3 whitespace-pre-line">
+                  {post.content ? post.content.replace(/<[^>]*>/g, '') : ''}
                 </p>
               </div>
             </div>
@@ -227,18 +287,31 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
                 Chi tiết →
               </span>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (confirm('Bạn muốn gỡ bài đăng này khỏi luồng bản tin?')) {
-                    deletePost(post.id);
-                  }
-                }}
-                className="text-slate-400 hover:text-rose-500 transition cursor-pointer"
-                title="Xóa bài đăng"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStartEdit(post);
+                  }}
+                  className="text-slate-400 hover:text-blue-600 hover:bg-slate-200 p-1.5 rounded transition cursor-pointer"
+                  title="Chỉnh sửa bài viết"
+                >
+                  <Edit className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm('Bạn muốn gỡ bài đăng này khỏi luồng bản tin?')) {
+                      deletePost(post.id);
+                    }
+                  }}
+                  className="text-slate-400 hover:text-rose-500 hover:bg-slate-200 p-1.5 rounded transition cursor-pointer"
+                  title="Xóa bài đăng"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -280,7 +353,7 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
                 <iframe
                   width="100%"
                   height="100%"
-                  src={activePostDetail.videoUrl}
+                  src={getYouTubeEmbedUrl(activePostDetail.videoUrl)}
                   title={activePostDetail.title}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -298,13 +371,26 @@ export default function NewsFeed({ selectedPostId, setSelectedPostId }: NewsFeed
               <span className="bg-blue-50 border border-blue-100 text-blue-600 text-[9px] font-mono font-bold tracking-widest px-2.5 py-1 rounded inline-block uppercase select-none">
                 {activePostDetail.category === 'Video' ? 'HIGHLIGHT VIDEO' : 'BẢN TIN CHÍNH THỨC'}
               </span>
-              <p className="text-slate-650 text-xs md:text-sm leading-relaxed whitespace-pre-wrap">
-                {activePostDetail.content}
-              </p>
+              <div 
+                className="text-slate-650 text-xs md:text-sm leading-relaxed whitespace-pre-line prose prose-blue prose-sm max-w-none text-left"
+                dangerouslySetInnerHTML={{ __html: activePostDetail.content }}
+              />
             </div>
 
             {/* Close trigger button */}
-            <div className="flex justify-end pt-4 border-t border-slate-100 select-none">
+            <div className="flex justify-end items-center gap-2 pt-4 border-t border-slate-100 select-none">
+              <button
+                onClick={() => {
+                  setSelectedPostId(null);
+                  handleStartEdit(activePostDetail);
+                }}
+                className="bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg text-xs font-bold cursor-pointer transition flex items-center gap-1.5"
+                title="Sửa đổi bài đăng này"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                Sửa bài viết
+              </button>
+              
               <button
                 onClick={() => setSelectedPostId(null)}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2 rounded-lg text-xs font-bold cursor-pointer transition"

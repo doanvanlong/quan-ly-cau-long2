@@ -1560,7 +1560,7 @@ export default function DivisionDraw() {
                   )}
                   
                   {/* SECTION 1: Config summary & Action bốc thăm */}
-                  <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-5 flex flex-col xl:flex-row xl:items-start justify-between gap-6 shadow-sm">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col xl:flex-row xl:items-start justify-between gap-6 shadow-sm">
                     {/* Left: The configuration controls */}
                     <div className="space-y-4 flex-1 min-w-0">
                       <div className="flex items-center justify-between border-b border-slate-200 pb-3">
@@ -2191,7 +2191,7 @@ export default function DivisionDraw() {
                                                   const isEditing = editingTeamId === pt.id;
 
                                                   return (
-                                                    <div key={pt.id} className="bg-white border-2 border-slate-150 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-blue-300 hover:shadow-xs transition relative overflow-hidden">
+                                                    <div key={pt.id} className="bg-white border border-slate-200/90 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-blue-400 hover:shadow-md transition duration-200 relative overflow-hidden shadow-sm">
                                                       <div className="absolute top-2 right-2 select-none">
                                                         <span className="text-[9px] bg-slate-100 font-extrabold px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">
                                                           Đội #{idx + 1}
@@ -2376,7 +2376,7 @@ export default function DivisionDraw() {
                                       const isEditing = editingTeamId === pt.id;
 
                                       return (
-                                        <div key={pt.id} className="bg-white border-2 border-slate-100 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-violet-200 transition shadow-3xs hover:shadow-xs relative overflow-hidden">
+                                        <div key={pt.id} className="bg-white border border-slate-205 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-violet-400 hover:shadow-md transition duration-200 relative overflow-hidden shadow-sm">
                                           <div className="absolute top-2 right-2 select-none">
                                             <span className="text-[9px] bg-slate-100 font-extrabold px-1.5 py-0.5 rounded text-slate-500 border border-slate-200">
                                               Đội #{index + 1}

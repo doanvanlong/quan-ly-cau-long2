@@ -78,14 +78,8 @@ function TournamentAppContent() {
           </div>
         </main>
 
-        {/* Dynamic metadata status footer at bottom right */}
-        <footer className="h-12 bg-white border-t border-slate-200 px-6 md:px-8 flex flex-col md:flex-row items-center justify-between text-[11px] text-slate-500 shrink-0 py-2 md:py-0 text-center md:text-left gap-1 md:gap-0">
-          <div className="flex gap-4 items-center">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 tracking-normal inline-block animate-pulse"></span>
-              Cơ sở dữ liệu Local & Firebase hoạt động ổn định
-            </span>
-          </div>
+        {/* Dynamic metadata status footer centered */}
+        <footer className="h-12 bg-white border-t border-slate-200 px-6 md:px-8 flex items-center justify-center text-[11px] text-slate-500 shrink-0">
           <div>
             <span className="font-semibold text-slate-700 select-none">© 2026 SmashManager Pro • Sleek UI v1.0</span>
           </div>
