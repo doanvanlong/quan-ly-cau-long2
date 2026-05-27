@@ -56,6 +56,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // System state config match block
+    match /system_state/{configId} {
+      allow read, write: if true;
+    }
+
     // Posts news match block
     match /posts/{postId} {
       allow read, write: if true;

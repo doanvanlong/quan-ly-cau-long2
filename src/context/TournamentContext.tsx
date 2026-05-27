@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Team, Sponsor, Post, Tournament, Match, Player, GroupStanding, MatchSet, Athlete, PairedTeam } from '../types';
 import { mockTeams, mockSponsors, mockPosts, mockTournaments, mockMatches } from '../data/mockData';
 import { db, auth, firebaseEnabled as isFirebaseConfigured, handleFirestoreError, OperationType } from '../firebase';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, collectionGroup } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, collectionGroup, getDoc } from 'firebase/firestore';
 
 function cleanUndefined(obj: any): any {
   if (obj === null || obj === undefined) return null;
@@ -240,6 +240,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     if (!db) return;
     try {
       console.log("Auto-initializing Firestore with high-fidelity system defaults...");
+      // 0. Set initialization metadata so we know this database had template loaded (and deleting tournaments won't reset it)
+      await setDoc(doc(db, 'system_state', 'config'), { initialized: true });
+
       // 1. Tournaments
       for (const t of mockTournaments) {
         await setDoc(doc(db, 'tournaments', t.id), cleanUndefined(t));
@@ -318,10 +321,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     setFirebaseStatusState('CONNECTED');
 
     // Subscribe to tournaments
-    const unsubTournaments = onSnapshot(collection(db, 'tournaments'), (snapshot) => {
+    const unsubTournaments = onSnapshot(collection(db, 'tournaments'), async (snapshot) => {
       if (snapshot.empty) {
-        // Firestore tournaments collection is empty, let's auto-populate with our rich badminton template!
-        initializeFirebaseWithMockData();
+        try {
+          const configDoc = await getDoc(doc(db, 'system_state', 'config'));
+          if (configDoc.exists() && configDoc.data()?.initialized) {
+            // Yes, already initialized previously, meaning the user intentionally deleted all tournaments or wants a clean slide
+            setTournaments([]);
+            return;
+          }
+          // Brand new database, auto-initialize with template
+          await initializeFirebaseWithMockData();
+        } catch (error) {
+          console.error("Error checking database initialization status:", error);
+          setTournaments([]);
+        }
       } else {
         const list: Tournament[] = [];
         snapshot.forEach(docSnap => {
@@ -400,6 +414,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
 
     try {
+      // Set initialization metadata so we don't accidentally auto-populate with defaults later
+      await setDoc(doc(db, 'system_state', 'config'), { initialized: true });
+
       // 1. Tournaments
       for (const t of tournaments) {
         await setDoc(doc(db, 'tournaments', t.id), cleanUndefined(t));
